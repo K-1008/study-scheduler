@@ -17,5 +17,6 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  redirect("/login?error=メール確認リンクが無効か期限切れです");
+  const message = encodeURIComponent("メール確認リンクが無効か期限切れです");
+  redirect(`/login?error=${message}`);
 }

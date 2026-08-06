@@ -30,7 +30,12 @@ export async function signup(formData: FormData) {
     redirect(`/login?error=${encodeURIComponent(error.message)}`);
   }
 
-  redirect("/login?message=確認メールを送信しました。メール内のリンクを開いて登録を完了してください。");
+  // 日本語をそのまま渡すと x-action-redirect ヘッダーに非ASCII文字が乗り
+  // ERR_INVALID_CHAR で落ちるため、必ずエンコードする
+  const message = encodeURIComponent(
+    "確認メールを送信しました。メール内のリンクを開いて登録を完了してください。",
+  );
+  redirect(`/login?message=${message}`);
 }
 
 export async function logout() {
