@@ -3,7 +3,9 @@ import { fsrs, createEmptyCard, type Card, type Grade } from "ts-fsrs";
 export type { Grade };
 export { Rating, State } from "ts-fsrs";
 
-const scheduler = fsrs();
+// enable_short_term: false で「1分後・10分後」といった当日中の再出題を無効にする。
+// 演習問題は同じ日に解き直すものではないため、最短でも翌日以降になるようにしている。
+const scheduler = fsrs({ enable_short_term: false });
 
 /** review_states テーブルの行(DBに保存されている形) */
 export interface ReviewStateRow {
