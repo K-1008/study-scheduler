@@ -1,5 +1,10 @@
 -- 勉強スケジュール管理アプリ 初期スキーマ
--- Supabase の SQL Editor でそのまま実行してください。
+--
+-- Supabase の SQL Editor に全文をそのまま貼り付けて Run してください。
+-- (-- で始まる行はコメントなので、消さずにそのまま貼り付けて問題ありません)
+--
+-- 何度実行しても同じ結果になるよう書いてあるので、
+-- 途中で失敗した場合は最初から流し直して構いません。
 
 -- ============================================================
 -- items: 演習項目
@@ -17,12 +22,19 @@ create index if not exists items_user_id_idx on public.items(user_id);
 
 alter table public.items enable row level security;
 
+drop policy if exists "items_select_own" on public.items;
 create policy "items_select_own" on public.items
   for select using (auth.uid() = user_id);
+
+drop policy if exists "items_insert_own" on public.items;
 create policy "items_insert_own" on public.items
   for insert with check (auth.uid() = user_id);
+
+drop policy if exists "items_update_own" on public.items;
 create policy "items_update_own" on public.items
   for update using (auth.uid() = user_id);
+
+drop policy if exists "items_delete_own" on public.items;
 create policy "items_delete_own" on public.items
   for delete using (auth.uid() = user_id);
 
@@ -50,12 +62,19 @@ create index if not exists review_states_user_due_idx on public.review_states(us
 
 alter table public.review_states enable row level security;
 
+drop policy if exists "review_states_select_own" on public.review_states;
 create policy "review_states_select_own" on public.review_states
   for select using (auth.uid() = user_id);
+
+drop policy if exists "review_states_insert_own" on public.review_states;
 create policy "review_states_insert_own" on public.review_states
   for insert with check (auth.uid() = user_id);
+
+drop policy if exists "review_states_update_own" on public.review_states;
 create policy "review_states_update_own" on public.review_states
   for update using (auth.uid() = user_id);
+
+drop policy if exists "review_states_delete_own" on public.review_states;
 create policy "review_states_delete_own" on public.review_states
   for delete using (auth.uid() = user_id);
 
@@ -79,7 +98,10 @@ create index if not exists review_logs_user_id_idx on public.review_logs(user_id
 
 alter table public.review_logs enable row level security;
 
+drop policy if exists "review_logs_select_own" on public.review_logs;
 create policy "review_logs_select_own" on public.review_logs
   for select using (auth.uid() = user_id);
+
+drop policy if exists "review_logs_insert_own" on public.review_logs;
 create policy "review_logs_insert_own" on public.review_logs
   for insert with check (auth.uid() = user_id);
