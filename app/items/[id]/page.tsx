@@ -1,0 +1,118 @@
+import { notFound } from "next/navigation";
+import { getItemDetail } from "@/lib/queries";
+import { updateItem } from "@/app/items/actions";
+import { ReviewButtons } from "@/app/reviews/ReviewButtons";
+
+const RATING_LABEL: Record<number, string> = {
+  1: "Again",
+  2: "Hard",
+  3: "Good",
+  4: "Easy",
+};
+
+const STATE_LABEL: Record<number, string> = {
+  0: "New",
+  1: "Learning",
+  2: "Review",
+  3: "Relearning",
+};
+
+function formatDateTime(iso: string) {
+  return new Date(iso).toLocaleString("ja-JP");
+}
+
+export default async function ItemDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const { item, logs } = await getItemDetail(id);
+
+  if (!item) notFound();
+
+  return (
+    <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8">
+      <div className="mb-6 rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+        <form action={updateItem.bind(null, item.id)} className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              タイトル
+            </label>
+            <input
+              name="title"
+              defaultValue={item.title}
+              required
+              className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+            />
+          </div>
+          <div className="sm:w-40">
+            <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              タグ
+            </label>
+            <input
+              name="tag"
+              defaultValue={item.tag ?? ""}
+              className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+            />
+          </div>
+          <button
+            type="submit"
+            className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900"
+          >
+            保存
+          </button>
+        </form>
+      </div>
+
+      {item.review_states && (
+        <div className="mb-6 rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+          <div className="mb-3 grid grid-cols-2 gap-2 text-sm text-zinc-600 sm:grid-cols-4 dark:text-zinc-400">
+            <div>
+              <div className="text-xs text-zinc-400">状態</div>
+              {STATE_LABEL[item.review_states.state]}
+            </div>
+            <div>
+              <div className="text-xs text-zinc-400">次回復習</div>
+              {formatDateTime(item.review_states.due)}
+            </div>
+            <div>
+              <div className="text-xs text-zinc-400">安定度</div>
+              {item.review_states.stability.toFixed(2)}
+            </div>
+            <div>
+              <div className="text-xs text-zinc-400">難易度</div>
+              {item.review_states.difficulty.toFixed(2)}
+            </div>
+          </div>
+          <p className="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            今すぐ復習を記録する
+          </p>
+          <ReviewButtons itemId={item.id} />
+        </div>
+      )}
+
+      <h2 className="mb-3 text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+        復習履歴
+      </h2>
+      {logs.length === 0 ? (
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">まだ復習履歴がありません。</p>
+      ) : (
+        <ul className="space-y-2">
+          {logs.map((log) => (
+            <li
+              key={log.id}
+              className="flex items-center justify-between rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm dark:border-zinc-800 dark:bg-zinc-950"
+            >
+              <span className="text-zinc-500 dark:text-zinc-400">{formatDateTime(log.reviewed_at)}</span>
+              <span className="font-medium text-zinc-800 dark:text-zinc-200">
+                {RATING_LABEL[log.rating]}
+              </span>
+              <span className="text-zinc-500 dark:text-zinc-400">次回まで {log.scheduled_days} 日</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </main>
+  );
+}
