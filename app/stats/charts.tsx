@@ -1,4 +1,5 @@
 import { formatDayKeyShort } from "@/lib/date";
+import { RATING_OPTIONS } from "@/lib/ratings";
 
 /**
  * グラフの配色。dataviz スキルの検証済みパレットを使用し、
@@ -121,10 +122,11 @@ export function DailyReviewChart({ data }: { data: { key: string; count: number 
 }
 
 // ============================================================
-// 評価の分布(Again→Easy の順序尺度なので順序ランプを使う)
+// 評価の分布(できない→簡単 の順序尺度なので順序ランプを使う)
 // ============================================================
 
-const RATING_LABELS = ["Again", "Hard", "Good", "Easy"];
+// ラベルは lib/ratings.ts の定義に合わせる(UIと表記を揃えるため)
+const RATING_LABELS = RATING_OPTIONS.map((o) => o.label);
 
 export function RatingChart({ counts }: { counts: [number, number, number, number] }) {
   const max = Math.max(...counts, 1);
@@ -134,7 +136,7 @@ export function RatingChart({ counts }: { counts: [number, number, number, numbe
     <figure className="viz m-0">
       <figcaption className={`mb-1 ${CAPTION}`}>評価の分布</figcaption>
       <p className={`mb-3 ${AXIS_TEXT}`}>
-        全 {total} 回。Again が多い項目ほど、FSRSは短い間隔で再出題します
+        全 {total} 回。「できない」が多い項目ほど、FSRSは短い間隔で再出題します
       </p>
 
       <div className="space-y-2">
