@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import type { ItemWithReviewState, ReviewLogRow } from "@/lib/types";
 import { toDayKey, todayKey, shiftDayKey } from "@/lib/date";
+import { countTrainableItems, type RawLog } from "@/lib/optimizer";
 
 const ITEM_SELECT =
   "id, title, tag, is_archived, created_at, review_states(due, state, stability, difficulty, reps, lapses), review_logs(count)";
@@ -107,6 +108,21 @@ export async function getCalendarSchedule(): Promise<Map<string, CalendarDay>> {
 // ============================================================
 // 統計
 // ============================================================
+
+/**
+ * 個人最適化の学習に使えるアイテム数。
+ * 単純な復習回数ではなく、「2回以上復習され、間隔が1日以上空いた」
+ * 履歴から作れる学習サンプルの数を数える。
+ */
+export async function getTrainableItemCount(): Promise<number> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("review_logs")
+    .select("item_id, rating, reviewed_at")
+    .order("reviewed_at", { ascending: true });
+  if (error) return 0;
+  return countTrainableItems((data ?? []) as RawLog[]);
+}
 
 export interface Stats {
   totalItems: number;

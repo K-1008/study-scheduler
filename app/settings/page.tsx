@@ -1,11 +1,9 @@
 import { getUserSettingsRow } from "@/lib/settings";
-import { getStats } from "@/lib/queries";
+import { getTrainableItemCount } from "@/lib/queries";
 import { buildScheduler, DEFAULT_SETTINGS } from "@/lib/fsrs";
+import { MIN_TRAINABLE_ITEMS } from "@/lib/optimizer";
 import { createEmptyCard, Rating } from "ts-fsrs";
-import { saveRetention } from "./actions";
-
-/** FSRS開発チームが「意味のある最適化」に推奨する復習ログ件数 */
-const OPTIMIZE_THRESHOLD = 1000;
+import { saveRetention, runOptimization, resetParameters } from "./actions";
 
 const CHOICES = [
   { value: 0.85, label: "0.85", note: "復習を減らしたい" },
@@ -43,11 +41,12 @@ export default async function SettingsPage({
   searchParams: Promise<{ saved?: string; error?: string }>;
 }) {
   const { saved, error } = await searchParams;
-  const [row, stats] = await Promise.all([getUserSettingsRow(), getStats()]);
+  const [row, trainable] = await Promise.all([getUserSettingsRow(), getTrainableItemCount()]);
 
   const current = row?.request_retention ?? DEFAULT_SETTINGS.requestRetention;
-  const reviews = stats.totalReviews;
-  const progress = Math.min(100, Math.round((reviews / OPTIMIZE_THRESHOLD) * 100));
+  const ready = trainable >= MIN_TRAINABLE_ITEMS;
+  const progress = Math.min(100, Math.round((trainable / MIN_TRAINABLE_ITEMS) * 100));
+  const optimized = Boolean(row?.fsrs_params);
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8">
@@ -122,13 +121,15 @@ export default async function SettingsPage({
         </h2>
         <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
           FSRSの21個のパラメータを、あなたの復習履歴に合わせて調整します。
-          いまは大規模な公開データで学習した既定値を使っています。
+          大規模な公開データで学習した既定値を出発点に、そこから離れすぎないよう
+          制約をかけながら微調整するので、データが少ないうちは既定値のままに近く、
+          増えるほど自分向きに寄っていきます。
         </p>
 
         <div className="mt-4">
           <div className="mb-1 flex items-baseline justify-between text-xs">
             <span className="text-zinc-600 dark:text-zinc-300">
-              復習ログ {reviews} / {OPTIMIZE_THRESHOLD} 件
+              学習に使えるデータ {trainable} / {MIN_TRAINABLE_ITEMS} 件
             </span>
             <span className="text-zinc-400">{progress}%</span>
           </div>
@@ -138,21 +139,47 @@ export default async function SettingsPage({
               style={{ width: `${Math.max(progress, 1)}%` }}
             />
           </div>
+          <p className="mt-1 text-xs text-zinc-400">
+            同じ項目を2回以上、1日以上あけて復習すると増えます
+          </p>
         </div>
 
+        {row?.optimized_at && (
+          <p className="mt-3 text-xs text-zinc-600 dark:text-zinc-300">
+            最終実行: {new Date(row.optimized_at).toLocaleString("ja-JP")}
+            {row.optimized_review_count != null && `(${row.optimized_review_count}件で学習)`}
+            <br />
+            現在 {optimized ? "個人最適化したパラメータ" : "既定のパラメータ"} を使用中
+          </p>
+        )}
+
         <p className="mt-3 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-          {reviews >= OPTIMIZE_THRESHOLD
-            ? "十分なログが溜まりました。最適化を実行できます。"
-            : `データが足りません。この件数で最適化すると、たまたまの結果に引きずられて既定値より精度が落ちます。あと ${OPTIMIZE_THRESHOLD - reviews} 件の復習が必要です。`}
+          {ready
+            ? "実行できます。データが増えたら再実行すると精度が上がります(月1回程度が目安)。"
+            : `あと ${MIN_TRAINABLE_ITEMS - trainable} 件で実行できます。これを下回るとライブラリ側が学習を省略し、既定値がそのまま返るためです。`}
         </p>
 
-        <button
-          type="button"
-          disabled
-          className="mt-3 cursor-not-allowed rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-400 dark:border-zinc-700 dark:text-zinc-600"
-        >
-          最適化を実行(未実装)
-        </button>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <form action={runOptimization}>
+            <button
+              type="submit"
+              disabled={!ready}
+              className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:cursor-not-allowed disabled:bg-zinc-200 disabled:text-zinc-400 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-300 dark:disabled:bg-zinc-800 dark:disabled:text-zinc-600"
+            >
+              最適化を実行
+            </button>
+          </form>
+          {optimized && (
+            <form action={resetParameters}>
+              <button
+                type="submit"
+                className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900"
+              >
+                既定値に戻す
+              </button>
+            </form>
+          )}
+        </div>
       </section>
     </main>
   );
