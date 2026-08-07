@@ -3,7 +3,7 @@ import { getTrainableItemCount } from "@/lib/queries";
 import { buildScheduler, DEFAULT_SETTINGS } from "@/lib/fsrs";
 import { MIN_TRAINABLE_ITEMS } from "@/lib/optimizer";
 import { createEmptyCard, Rating } from "ts-fsrs";
-import { saveRetention, runOptimization, resetParameters } from "./actions";
+import { saveRetention, runOptimization, resetParameters, testOptimizer } from "./actions";
 
 const CHOICES = [
   { value: 0.85, label: "0.85", note: "復習を減らしたい" },
@@ -180,6 +180,18 @@ export default async function SettingsPage({
             </form>
           )}
         </div>
+
+        <form action={testOptimizer} className="mt-4 border-t border-zinc-100 pt-3 dark:border-zinc-900">
+          <button
+            type="submit"
+            className="text-xs text-zinc-500 underline hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-100"
+          >
+            この環境で最適化が動くか確認する
+          </button>
+          <p className="mt-1 text-xs text-zinc-400">
+            合成データで実行経路だけを試します。あなたのデータも設定も変わりません。
+          </p>
+        </form>
       </section>
     </main>
   );
