@@ -4,6 +4,7 @@ import { getItemDetail } from "@/lib/queries";
 import { updateItem } from "@/app/items/actions";
 import { ReviewButtons } from "@/app/reviews/ReviewButtons";
 import { RATING_LABEL, describeInterval } from "@/lib/ratings";
+import { toDayKey } from "@/lib/date";
 
 const STATE_LABEL: Record<number, string> = {
   0: "未学習",
@@ -36,6 +37,9 @@ export default async function ItemDetailPage({
       </Link>
 
       <div className="mb-6 rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+        <h2 className="mb-3 text-sm font-semibold text-zinc-800 dark:text-zinc-200">
+          この項目を編集
+        </h2>
         <form action={updateItem.bind(null, item.id)} className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <div className="flex-1">
             <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
@@ -48,9 +52,9 @@ export default async function ItemDetailPage({
               className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
             />
           </div>
-          <div className="sm:w-40">
+          <div className="sm:w-32">
             <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              タグ
+              科目
             </label>
             <input
               name="tag"
@@ -58,6 +62,19 @@ export default async function ItemDetailPage({
               className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
             />
           </div>
+          {item.review_states && (
+            <div className="sm:w-40">
+              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                次回復習日
+              </label>
+              <input
+                type="date"
+                name="due"
+                defaultValue={toDayKey(new Date(item.review_states.due))}
+                className="mt-1 w-full rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+              />
+            </div>
+          )}
           <button
             type="submit"
             className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900"

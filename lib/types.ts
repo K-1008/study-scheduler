@@ -17,6 +17,8 @@ export interface ReviewStateFields {
 
 export interface ItemWithReviewState extends Item {
   review_states: ReviewStateFields | null;
+  /** PostgREST のネスト集約。復習履歴の件数が [{ count: n }] で返る */
+  review_logs: { count: number }[];
 }
 
 export interface ReviewLogRow {
@@ -26,4 +28,9 @@ export interface ReviewLogRow {
   stability_after: number;
   difficulty_after: number;
   scheduled_days: number;
+}
+
+/** ネスト集約から件数を取り出す */
+export function reviewCountOf(item: ItemWithReviewState): number {
+  return item.review_logs?.[0]?.count ?? 0;
 }

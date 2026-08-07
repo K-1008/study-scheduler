@@ -3,15 +3,19 @@ import type { ItemWithReviewState, ReviewLogRow } from "@/lib/types";
 import { toDayKey, todayKey, shiftDayKey } from "@/lib/date";
 
 const ITEM_SELECT =
-  "id, title, tag, is_archived, created_at, review_states(due, state, stability, difficulty, reps, lapses)";
+  "id, title, tag, is_archived, created_at, review_states(due, state, stability, difficulty, reps, lapses), review_logs(count)";
 
-/** 全ての(未アーカイブ)項目を、FSRSの現在状態付きで取得する */
+/**
+ * 全ての項目を、FSRSの現在状態と復習履歴の件数付きで取得する。
+ *
+ * is_archived では絞らない。アーカイブ機能は廃止したため、フィルタを
+ * 残すと過去にアーカイブした項目が一覧に出ず削除もできなくなる。
+ */
 export async function getActiveItems(): Promise<ItemWithReviewState[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("items")
     .select(ITEM_SELECT)
-    .eq("is_archived", false)
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(error.message);
