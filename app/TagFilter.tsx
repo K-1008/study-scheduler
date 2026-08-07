@@ -2,7 +2,7 @@ import Link from "next/link";
 
 /**
  * タグでの絞り込み。リンクなので JavaScript 無しでも動く。
- * basePath は "/" や "/items" のような絞り込み対象ページのパス。
+ * basePath は絞り込み対象ページのパス。
  */
 export function TagFilter({
   tags,

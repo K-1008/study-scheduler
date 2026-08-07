@@ -1,20 +1,15 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getItemDetail } from "@/lib/queries";
 import { updateItem } from "@/app/items/actions";
 import { ReviewButtons } from "@/app/reviews/ReviewButtons";
-
-const RATING_LABEL: Record<number, string> = {
-  1: "Again",
-  2: "Hard",
-  3: "Good",
-  4: "Easy",
-};
+import { RATING_LABEL, describeInterval } from "@/lib/ratings";
 
 const STATE_LABEL: Record<number, string> = {
-  0: "New",
-  1: "Learning",
-  2: "Review",
-  3: "Relearning",
+  0: "未学習",
+  1: "学習中",
+  2: "復習",
+  3: "再学習",
 };
 
 function formatDateTime(iso: string) {
@@ -33,6 +28,13 @@ export default async function ItemDetailPage({
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8">
+      <Link
+        href="/"
+        className="mb-3 inline-block text-sm text-zinc-500 hover:underline dark:text-zinc-400"
+      >
+        ← ホームに戻る
+      </Link>
+
       <div className="mb-6 rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
         <form action={updateItem.bind(null, item.id)} className="flex flex-col gap-3 sm:flex-row sm:items-end">
           <div className="flex-1">
@@ -74,7 +76,7 @@ export default async function ItemDetailPage({
             </div>
             <div>
               <div className="text-xs text-zinc-400">次回復習</div>
-              {formatDateTime(item.review_states.due)}
+              {describeInterval(new Date(item.review_states.due))}
             </div>
             <div>
               <div className="text-xs text-zinc-400">安定度</div>

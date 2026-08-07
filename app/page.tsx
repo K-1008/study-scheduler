@@ -1,71 +1,133 @@
 import Link from "next/link";
-import { getDueItems, getTags } from "@/lib/queries";
+import { getActiveItems, getDueItems, getTags } from "@/lib/queries";
 import { ReviewButtons } from "@/app/reviews/ReviewButtons";
 import { TagFilter } from "@/app/TagFilter";
+import { AddSolvedForm } from "@/app/AddSolvedForm";
+import { archiveItem } from "@/app/items/actions";
+import { describeInterval } from "@/lib/ratings";
 
-export default async function DashboardPage({
+function Notice({ text, tone }: { text: string; tone: "ok" | "error" }) {
+  const cls =
+    tone === "ok"
+      ? "bg-green-50 text-green-800 dark:bg-green-950 dark:text-green-200"
+      : "bg-red-50 text-red-800 dark:bg-red-950 dark:text-red-200";
+  return <p className={`mb-4 rounded-md px-3 py-2 text-sm ${cls}`}>{text}</p>;
+}
+
+export default async function HomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ tag?: string }>;
+  searchParams: Promise<{ tag?: string; added?: string; error?: string }>;
 }) {
-  const { tag } = await searchParams;
-  const [dueItems, tags] = await Promise.all([getDueItems(tag), getTags()]);
+  const { tag, added, error } = await searchParams;
+  const [dueItems, allItems, tags] = await Promise.all([
+    getDueItems(tag),
+    getActiveItems(),
+    getTags(),
+  ]);
+
+  const scheduled = allItems
+    .filter((i) => !tag || i.tag === tag)
+    .filter((i) => i.review_states)
+    .sort(
+      (a, b) =>
+        new Date(a.review_states!.due).getTime() - new Date(b.review_states!.due).getTime(),
+    );
 
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8">
-      <h1 className="mb-1 text-xl font-semibold text-zinc-900 dark:text-zinc-50">
-        今日の復習
-      </h1>
-      <p className="mb-4 text-sm text-zinc-500 dark:text-zinc-400">
-        {dueItems.length} 件の項目が復習期日を迎えています
-        {tag && <span className="ml-1">(科目: {tag})</span>}
-      </p>
+    <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6">
+      {added && <Notice text={added} tone="ok" />}
+      {error && <Notice text={error} tone="error" />}
+
+      <AddSolvedForm tags={tags} />
 
       <TagFilter tags={tags} active={tag} basePath="/" />
 
-      {dueItems.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-zinc-300 p-8 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-          {tag ? (
-            <>
-              「{tag}」で今日復習すべき項目はありません。
-              <Link href="/" className="ml-1 underline">
-                すべて表示
-              </Link>
-            </>
-          ) : (
-            <>
-              今日復習すべき項目はありません。
-              <Link href="/items" className="ml-1 underline">
-                項目を登録する
-              </Link>
-            </>
-          )}
-        </p>
-      ) : (
-        <ul className="space-y-4">
-          {dueItems.map((item) => (
-            <li
-              key={item.id}
-              className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950"
-            >
-              <div className="mb-3 flex items-baseline justify-between gap-2">
-                <Link
-                  href={`/items/${item.id}`}
-                  className="font-medium text-zinc-900 hover:underline dark:text-zinc-50"
-                >
-                  {item.title}
-                </Link>
-                {item.tag && (
-                  <span className="shrink-0 rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
-                    {item.tag}
-                  </span>
-                )}
-              </div>
-              <ReviewButtons itemId={item.id} />
-            </li>
-          ))}
-        </ul>
-      )}
+      {/* ---------- 今日の復習 ---------- */}
+      <section className="mb-8">
+        <h2 className="mb-3 flex items-baseline gap-2 text-sm font-semibold text-zinc-800 dark:text-zinc-200">
+          今日の復習
+          <span className="text-xs font-normal text-zinc-500 dark:text-zinc-400">
+            {dueItems.length} 件
+          </span>
+        </h2>
+
+        {dueItems.length === 0 ? (
+          <p className="rounded-lg border border-dashed border-zinc-300 p-6 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
+            {tag
+              ? `「${tag}」で今日やるべき復習はありません。`
+              : "今日やるべき復習はありません。おつかれさまです。"}
+          </p>
+        ) : (
+          <ul className="space-y-3">
+            {dueItems.map((item) => (
+              <li
+                key={item.id}
+                className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950"
+              >
+                <div className="mb-3 flex items-baseline justify-between gap-2">
+                  <Link
+                    href={`/items/${item.id}`}
+                    className="font-medium text-zinc-900 hover:underline dark:text-zinc-50"
+                  >
+                    {item.title}
+                  </Link>
+                  {item.tag && (
+                    <span className="shrink-0 rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                      {item.tag}
+                    </span>
+                  )}
+                </div>
+                <ReviewButtons itemId={item.id} />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      {/* ---------- 登録済みの全項目 ---------- */}
+      <details className="rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+        <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-zinc-800 hover:bg-zinc-50 dark:text-zinc-200 dark:hover:bg-zinc-900">
+          すべての項目
+          <span className="ml-2 text-xs font-normal text-zinc-500 dark:text-zinc-400">
+            {scheduled.length} 件
+          </span>
+        </summary>
+
+        {scheduled.length === 0 ? (
+          <p className="px-4 py-6 text-center text-sm text-zinc-500 dark:text-zinc-400">
+            まだ項目がありません。
+          </p>
+        ) : (
+          <ul className="divide-y divide-zinc-100 border-t border-zinc-100 dark:divide-zinc-900 dark:border-zinc-900">
+            {scheduled.map((item) => (
+              <li key={item.id} className="flex items-center justify-between gap-3 px-4 py-2.5">
+                <div className="min-w-0 flex-1">
+                  <Link
+                    href={`/items/${item.id}`}
+                    className="block truncate text-sm text-zinc-900 hover:underline dark:text-zinc-50"
+                  >
+                    {item.title}
+                  </Link>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    {item.tag && <span className="mr-2">{item.tag}</span>}
+                    次回 {describeInterval(new Date(item.review_states!.due))}
+                  </p>
+                </div>
+                <form action={archiveItem.bind(null, item.id)}>
+                  <button
+                    type="submit"
+                    title="一覧から外します(復習履歴は残ります)"
+                    className="shrink-0 text-xs text-zinc-400 hover:text-red-600 dark:hover:text-red-400"
+                  >
+                    アーカイブ
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        )}
+      </details>
     </main>
   );
 }

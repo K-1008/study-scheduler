@@ -2,39 +2,44 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Rating, type Grade } from "ts-fsrs";
+import type { Grade } from "ts-fsrs";
+import { RATING_OPTIONS, describeInterval } from "@/lib/ratings";
 import { submitReview } from "./actions";
-
-const OPTIONS: { rating: Grade; label: string; className: string }[] = [
-  { rating: Rating.Again, label: "Again", className: "bg-red-600 hover:bg-red-500" },
-  { rating: Rating.Hard, label: "Hard", className: "bg-orange-500 hover:bg-orange-400" },
-  { rating: Rating.Good, label: "Good", className: "bg-green-600 hover:bg-green-500" },
-  { rating: Rating.Easy, label: "Easy", className: "bg-blue-600 hover:bg-blue-500" },
-];
 
 export function ReviewButtons({ itemId }: { itemId: string }) {
   const [pending, setPending] = useState<Grade | null>(null);
+  const [done, setDone] = useState<string | null>(null);
   const router = useRouter();
 
-  async function handleClick(rating: Grade) {
-    setPending(rating);
+  async function handleClick(grade: Grade) {
+    setPending(grade);
     try {
-      await submitReview(itemId, rating);
+      const result = await submitReview(itemId, grade);
+      setDone(describeInterval(new Date(result.nextDue)));
       router.refresh();
     } finally {
       setPending(null);
     }
   }
 
+  if (done) {
+    return (
+      <p className="rounded-md bg-zinc-100 px-3 py-2 text-sm text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300">
+        記録しました。次回は{done}です。
+      </p>
+    );
+  }
+
   return (
     <div className="grid grid-cols-4 gap-2">
-      {OPTIONS.map((opt) => (
+      {RATING_OPTIONS.map((opt) => (
         <button
-          key={opt.rating}
+          key={opt.grade}
           type="button"
           disabled={pending !== null}
-          onClick={() => handleClick(opt.rating)}
-          className={`rounded-md px-3 py-3 text-sm font-medium text-white disabled:opacity-50 ${opt.className}`}
+          title={opt.hint}
+          onClick={() => handleClick(opt.grade)}
+          className={`rounded-md px-2 py-3 text-sm font-medium text-white disabled:opacity-50 ${opt.className}`}
         >
           {opt.label}
         </button>

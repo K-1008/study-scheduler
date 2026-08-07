@@ -22,7 +22,7 @@ export async function submitReview(itemId: string, rating: Grade) {
   if (error || !state) throw new Error(error?.message ?? "復習状態が見つかりません");
 
   const now = new Date();
-  const { nextRow, log } = scheduleNext(state as ReviewStateRow, rating, now);
+  const { nextRow } = scheduleNext(state as ReviewStateRow, rating, now);
 
   const { error: updateError } = await supabase
     .from("review_states")
@@ -44,5 +44,6 @@ export async function submitReview(itemId: string, rating: Grade) {
   revalidatePath("/");
   revalidatePath(`/items/${itemId}`);
 
-  return { nextDue: nextRow.due, log };
+  // nextRow.due は ISO文字列。クライアントに返すのはこれだけで足りる
+  return { nextDue: nextRow.due };
 }

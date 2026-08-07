@@ -3,10 +3,9 @@ import { createClient } from "@/lib/supabase/server";
 import { logout } from "@/app/login/actions";
 
 const LINKS = [
-  { href: "/", label: "今日" },
+  { href: "/", label: "ホーム" },
   { href: "/calendar", label: "カレンダー" },
   { href: "/stats", label: "記録" },
-  { href: "/items", label: "項目管理" },
 ];
 
 export async function Nav() {
