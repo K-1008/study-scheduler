@@ -1,4 +1,5 @@
 import { RATING_OPTIONS } from "@/lib/ratings";
+import { todayKey } from "@/lib/date";
 import { addSolvedItem, createItem } from "@/app/items/actions";
 
 /**
@@ -6,6 +7,8 @@ import { addSolvedItem, createItem } from "@/app/items/actions";
  * 評価ボタン自体が送信ボタンを兼ねている。
  */
 export function AddSolvedForm({ tags }: { tags: string[] }) {
+  const today = todayKey();
+
   return (
     <form
       action={addSolvedItem}
@@ -45,6 +48,23 @@ export function AddSolvedForm({ tags }: { tags: string[] }) {
             ))}
           </datalist>
         </div>
+      </div>
+
+      <div className="mb-3 flex items-center gap-2">
+        <label htmlFor="new-solved-on" className="text-xs text-zinc-500 dark:text-zinc-400">
+          解いた日
+        </label>
+        <input
+          id="new-solved-on"
+          type="date"
+          name="solved_on"
+          defaultValue={today}
+          max={today}
+          className="rounded-md border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+        />
+        <span className="text-xs text-zinc-400">
+          前の日の分をあとから記録するときに変更します
+        </span>
       </div>
 
       <p className="mb-2 text-xs text-zinc-500 dark:text-zinc-400">

@@ -7,6 +7,16 @@
  */
 export const TIME_ZONE = "Asia/Tokyo";
 
+/**
+ * 1日の始まりとみなす時刻(日本時間)。
+ *
+ * 深夜0時で日付が変わると、23時50分に解き始めて0時を過ぎた分が
+ * 翌日の記録になってしまい、連続学習日数も途切れる。午前4時を境目に
+ * することで、0〜4時の記録は自動的に前日扱いになる。
+ * (Anki も既定で同じ仕組みを使っている)
+ */
+export const DAY_START_HOUR = 4;
+
 // en-CA は YYYY-MM-DD 形式で返る
 const dayKeyFormatter = new Intl.DateTimeFormat("en-CA", {
   timeZone: TIME_ZONE,
@@ -15,12 +25,21 @@ const dayKeyFormatter = new Intl.DateTimeFormat("en-CA", {
   day: "2-digit",
 });
 
-/** Date を日本時間基準の "YYYY-MM-DD" に変換する */
+/**
+ * Date を「その日」を表す日本時間基準の "YYYY-MM-DD" に変換する。
+ * DAY_START_HOUR ぶん時刻を巻き戻してから日付を取ることで、
+ * 深夜の記録が前日に寄る。
+ */
 export function toDayKey(date: Date): string {
+  return dayKeyFormatter.format(new Date(date.getTime() - DAY_START_HOUR * 3600_000));
+}
+
+/** 時刻を巻き戻さない、素のカレンダー日付。カレンダー画面の日付表示など用 */
+export function toCalendarDayKey(date: Date): string {
   return dayKeyFormatter.format(date);
 }
 
-/** 日本時間の「今日」の "YYYY-MM-DD" */
+/** アプリ上の「今日」の "YYYY-MM-DD"(午前4時までは前日) */
 export function todayKey(): string {
   return toDayKey(new Date());
 }
@@ -40,11 +59,23 @@ export function formatDayKeyShort(key: string): string {
 }
 
 /**
- * "YYYY-MM-DD" を日本時間0時の Date にする(toDayKey の逆変換)。
+ * "YYYY-MM-DD" を日本時間0時の Date にする。
  * 日本に夏時間は無いので +09:00 固定で問題ない。
  */
 export function dayKeyToDate(key: string): Date {
   return new Date(`${key}T00:00:00+09:00`);
+}
+
+/**
+ * 過去の日付に記録するときの時刻を決める。
+ *
+ * 今日なら現在時刻をそのまま使う。過去の日付ならその日の正午とする。
+ * 深夜や早朝を選ぶと DAY_START_HOUR の巻き戻しで意図しない日に
+ * 寄ってしまうため、境界から十分離れた時刻を選んでいる。
+ */
+export function recordedAtFor(dayKey: string, now: Date = new Date()): Date {
+  if (dayKey === toDayKey(now)) return now;
+  return new Date(`${dayKey}T12:00:00+09:00`);
 }
 
 /** "YYYY-MM-DD" 形式かどうか */

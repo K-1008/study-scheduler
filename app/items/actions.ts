@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { initialReviewState, scheduleNext } from "@/lib/fsrs";
 import { parseGrade, describeInterval } from "@/lib/ratings";
-import { dayKeyToDate, isDayKey } from "@/lib/date";
+import { dayKeyToDate, isDayKey, recordedAtFor, toDayKey, todayKey } from "@/lib/date";
 import { getUserSettings } from "@/lib/settings";
 
 /**
@@ -35,8 +35,12 @@ export async function addSolvedItem(formData: FormData) {
     .single();
   if (error) throw new Error(error.message);
 
+  // 解いた日を指定できる。深夜0時をまたいだ分を前日に記録したい場合や、
+  // 前の日の分をあとからまとめて入れる場合のため。未指定なら今日。
+  const solvedOn = formData.get("solved_on");
+  const now = isDayKey(solvedOn) ? recordedAtFor(solvedOn) : new Date();
+
   // 空のカードにその場で評価を適用し、初回の復習結果として保存する
-  const now = new Date();
   const settings = await getUserSettings();
   const { nextRow } = scheduleNext(initialReviewState(now), grade, now, settings);
 
@@ -57,8 +61,15 @@ export async function addSolvedItem(formData: FormData) {
   if (logError) throw new Error(logError.message);
 
   revalidatePath("/");
-  const when = describeInterval(new Date(nextRow.due), now);
-  redirect(`/?added=${encodeURIComponent(`${title} を登録しました。次回は${when}です。`)}`);
+
+  // 過去の日付に記録した場合は、いつの分として入ったかを明示する
+  const solvedKey = toDayKey(now);
+  const prefix =
+    solvedKey === todayKey()
+      ? `${title} を登録しました。`
+      : `${title} を ${solvedKey} の記録として登録しました。`;
+  const when = describeInterval(new Date(nextRow.due), new Date());
+  redirect(`/?added=${encodeURIComponent(`${prefix}次回は${when}です。`)}`);
 }
 
 /** まだ解いていない問題を、復習待ちとして登録する */
