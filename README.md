@@ -2,6 +2,9 @@
 
 FSRS(Free Spaced Repetition Scheduler)アルゴリズムで、演習問題を解いた日から次の復習日を自動算出するアプリ。
 
+**本番URL**: https://study-scheduler-lemon.vercel.app
+(PC・スマホ・iPadのブラウザから利用可。`main` にpushすると自動で再デプロイされる)
+
 ---
 
 ## Supabaseとは
