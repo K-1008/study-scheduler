@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { scheduleNext, type ReviewStateRow } from "@/lib/fsrs";
+import { getUserSettings } from "@/lib/settings";
 import type { Grade } from "ts-fsrs";
 
 export async function submitReview(itemId: string, rating: Grade) {
@@ -22,7 +23,8 @@ export async function submitReview(itemId: string, rating: Grade) {
   if (error || !state) throw new Error(error?.message ?? "復習状態が見つかりません");
 
   const now = new Date();
-  const { nextRow } = scheduleNext(state as ReviewStateRow, rating, now);
+  const settings = await getUserSettings();
+  const { nextRow } = scheduleNext(state as ReviewStateRow, rating, now, settings);
 
   const { error: updateError } = await supabase
     .from("review_states")

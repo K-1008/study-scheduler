@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { initialReviewState, scheduleNext } from "@/lib/fsrs";
 import { parseGrade, describeInterval } from "@/lib/ratings";
 import { dayKeyToDate, isDayKey } from "@/lib/date";
+import { getUserSettings } from "@/lib/settings";
 
 /**
  * 「今日解いた問題」を追加する。
@@ -36,7 +37,8 @@ export async function addSolvedItem(formData: FormData) {
 
   // 空のカードにその場で評価を適用し、初回の復習結果として保存する
   const now = new Date();
-  const { nextRow } = scheduleNext(initialReviewState(now), grade, now);
+  const settings = await getUserSettings();
+  const { nextRow } = scheduleNext(initialReviewState(now), grade, now, settings);
 
   const { error: stateError } = await supabase
     .from("review_states")

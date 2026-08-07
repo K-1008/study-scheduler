@@ -1,11 +1,34 @@
-import { fsrs, createEmptyCard, type Card, type Grade } from "ts-fsrs";
+import { fsrs, createEmptyCard, type Card, type Grade, type FSRS } from "ts-fsrs";
 
 export type { Grade };
-export { Rating, State } from "ts-fsrs";
+export { Rating, State, default_w } from "ts-fsrs";
 
-// enable_short_term: false で「1分後・10分後」といった当日中の再出題を無効にする。
-// 演習問題は同じ日に解き直すものではないため、最短でも翌日以降になるようにしている。
-const scheduler = fsrs({ enable_short_term: false });
+/** スケジューラに渡す設定 */
+export interface FsrsSettings {
+  /** 目標保持率。既定 0.9 */
+  requestRetention: number;
+  /** 個人最適化したパラメータ21個。null なら既定値 */
+  params: number[] | null;
+}
+
+export const DEFAULT_SETTINGS: FsrsSettings = {
+  requestRetention: 0.9,
+  params: null,
+};
+
+/**
+ * スケジューラを組み立てる。
+ *
+ * enable_short_term: false で「1分後・10分後」といった当日中の再出題を
+ * 無効にしている。演習問題は同じ日に解き直すものではないため。
+ */
+export function buildScheduler(settings: FsrsSettings = DEFAULT_SETTINGS): FSRS {
+  return fsrs({
+    enable_short_term: false,
+    request_retention: settings.requestRetention,
+    ...(settings.params ? { w: settings.params } : {}),
+  });
+}
 
 /** review_states テーブルの行(DBに保存されている形) */
 export interface ReviewStateRow {
@@ -56,13 +79,14 @@ export function initialReviewState(now: Date = new Date()): ReviewStateRow {
   return cardToRow(createEmptyCard(now));
 }
 
-/** 現在のFSRS状態にレーティングを適用し、次の状態とログを算出する */
+/** 現在のFSRS状態にレーティングを適用し、次の状態を算出する */
 export function scheduleNext(
   row: ReviewStateRow,
   rating: Grade,
   now: Date = new Date(),
+  settings: FsrsSettings = DEFAULT_SETTINGS,
 ) {
   const card = rowToCard(row);
-  const { card: nextCard, log } = scheduler.next(card, now, rating);
-  return { nextRow: cardToRow(nextCard), log };
+  const { card: nextCard } = buildScheduler(settings).next(card, now, rating);
+  return { nextRow: cardToRow(nextCard) };
 }

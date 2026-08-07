@@ -6,6 +6,7 @@ const LINKS = [
   { href: "/", label: "ホーム" },
   { href: "/calendar", label: "カレンダー" },
   { href: "/stats", label: "記録" },
+  { href: "/settings", label: "設定" },
 ];
 
 export async function Nav() {
