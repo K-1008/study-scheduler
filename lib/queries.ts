@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import type { ItemWithReviewState, ReviewLogRow } from "@/lib/types";
-import { toDayKey, todayKey, shiftDayKey } from "@/lib/date";
+import { toDayKey, todayKey, shiftDayKey, isDueBy } from "@/lib/date";
 import { countTrainableItems, type RawLog } from "@/lib/optimizer";
 
 const ITEM_SELECT =
@@ -34,14 +34,16 @@ export async function getTags(): Promise<string[]> {
 }
 
 /**
- * 復習期日(due)が現在時刻以前の項目を、期日が近い順に取得する。
+ * 今日やるべき項目を、期日が近い順に取得する。
  * tag を渡すとその科目だけに絞り込む。
+ *
+ * 判定は時刻ではなく日本時間のカレンダー日で行う(isDueBy を参照)。
  */
 export async function getDueItems(tag?: string): Promise<ItemWithReviewState[]> {
   const items = await getActiveItems();
-  const now = Date.now();
+  const today = todayKey();
   return items
-    .filter((item) => item.review_states && new Date(item.review_states.due).getTime() <= now)
+    .filter((item) => item.review_states && isDueBy(item.review_states.due, today))
     .filter((item) => !tag || item.tag === tag)
     .sort(
       (a, b) =>
@@ -152,7 +154,6 @@ export async function getStats(): Promise<Stats> {
 
   const allLogs = (logs ?? []) as { rating: number; reviewed_at: string }[];
   const today = todayKey();
-  const now = Date.now();
 
   // --- 日別件数(直近30日。復習が無かった日も0で埋める) ---
   const counts = new Map<string, number>();
@@ -194,9 +195,8 @@ export async function getStats(): Promise<Stats> {
   return {
     totalItems: items.length,
     totalReviews: allLogs.length,
-    dueToday: items.filter(
-      (i) => i.review_states && new Date(i.review_states.due).getTime() <= now,
-    ).length,
+    dueToday: items.filter((i) => i.review_states && isDueBy(i.review_states.due, today))
+      .length,
     streakDays,
     daily,
     ratingCounts,

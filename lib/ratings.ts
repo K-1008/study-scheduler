@@ -1,4 +1,5 @@
 import { Rating, type Grade } from "ts-fsrs";
+import { toDayKey, dayKeyDiff } from "@/lib/date";
 
 /**
  * 評価ボタンの定義。FSRSの4段階(Again/Hard/Good/Easy)は
@@ -47,10 +48,16 @@ export function parseGrade(value: unknown): Grade | null {
   return n === 1 || n === 2 || n === 3 || n === 4 ? (n as Grade) : null;
 }
 
-/** 次回復習日までの間隔を「明日」「3日後」のように表現する */
+/**
+ * 次回復習日までの間隔を「明日」「3日後」のように表現する。
+ *
+ * 時刻の差ではなくカレンダー上の日数で数える。時刻差で丸めると、
+ * 今日22時が期日の項目を朝10時に見たとき「明日」と出てしまう。
+ */
 export function describeInterval(due: Date, from: Date = new Date()): string {
-  const days = Math.round((due.getTime() - from.getTime()) / 86400000);
-  if (days <= 0) return "今日中";
+  const days = dayKeyDiff(toDayKey(from), toDayKey(due));
+  if (days < 0) return "期限切れ";
+  if (days === 0) return "今日";
   if (days === 1) return "明日";
   return `${days}日後`;
 }

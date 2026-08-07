@@ -51,3 +51,22 @@ export function dayKeyToDate(key: string): Date {
 export function isDayKey(value: unknown): value is string {
   return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value);
 }
+
+/** 2つの "YYYY-MM-DD" の日数差(to - from)。カレンダー上の日数で数える */
+export function dayKeyDiff(from: string, to: string): number {
+  return Math.round(
+    (Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`)) / 86400000,
+  );
+}
+
+/**
+ * その項目が「今日やるべき」かどうか。
+ *
+ * FSRSの due は「登録時刻 + N日」という時刻付きの値なので、22時に
+ * 登録すると翌日22時が期日になる。時刻で比較すると、その時刻まで
+ * 復習リストに現れない。学習アプリとして期待される挙動は
+ * 「その日になったら出る」なので、日本時間のカレンダー日で比較する。
+ */
+export function isDueBy(due: string | Date, today: string = todayKey()): boolean {
+  return toDayKey(typeof due === "string" ? new Date(due) : due) <= today;
+}
