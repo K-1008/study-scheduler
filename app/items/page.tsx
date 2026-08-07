@@ -1,13 +1,20 @@
 import Link from "next/link";
-import { getActiveItems } from "@/lib/queries";
+import { getActiveItems, getTags } from "@/lib/queries";
+import { TagFilter } from "@/app/TagFilter";
 import { createItem, archiveItem } from "./actions";
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("ja-JP");
 }
 
-export default async function ItemsPage() {
-  const items = await getActiveItems();
+export default async function ItemsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tag?: string }>;
+}) {
+  const { tag } = await searchParams;
+  const [allItems, tags] = await Promise.all([getActiveItems(), getTags()]);
+  const items = tag ? allItems.filter((i) => i.tag === tag) : allItems;
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8">
@@ -48,9 +55,11 @@ export default async function ItemsPage() {
         </button>
       </form>
 
+      <TagFilter tags={tags} active={tag} basePath="/items" />
+
       {items.length === 0 ? (
         <p className="rounded-lg border border-dashed border-zinc-300 p-8 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-          まだ項目が登録されていません。
+          {tag ? `「${tag}」の項目はありません。` : "まだ項目が登録されていません。"}
         </p>
       ) : (
         <ul className="divide-y divide-zinc-200 rounded-lg border border-zinc-200 bg-white dark:divide-zinc-800 dark:border-zinc-800 dark:bg-zinc-950">

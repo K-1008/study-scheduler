@@ -51,7 +51,9 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
+  // manifest とアイコンを除外しないと、ブラウザがそれらを取りに来たときに
+  // /login へリダイレクトされ、「ホーム画面に追加」が機能しなくなる。
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|manifest\\.webmanifest|icon$|apple-icon$|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
