@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Grade } from "ts-fsrs";
-import { RATING_OPTIONS, describeInterval } from "@/lib/ratings";
+import { RATING_OPTIONS, RATING_BUTTON_BASE, describeInterval } from "@/lib/ratings";
 import { submitReview } from "./actions";
 
 export function ReviewButtons({ itemId }: { itemId: string }) {
@@ -32,18 +32,25 @@ export function ReviewButtons({ itemId }: { itemId: string }) {
 
   return (
     <div className="grid grid-cols-4 gap-2">
-      {RATING_OPTIONS.map((opt) => (
-        <button
-          key={opt.grade}
-          type="button"
-          disabled={pending !== null}
-          title={opt.hint}
-          onClick={() => handleClick(opt.grade)}
-          className={`rounded-md px-2 py-3 text-sm font-medium text-white disabled:opacity-50 ${opt.className}`}
-        >
-          {opt.label}
-        </button>
-      ))}
+      {RATING_OPTIONS.map((opt) => {
+        const isClicked = pending === opt.grade;
+        return (
+          <button
+            key={opt.grade}
+            type="button"
+            disabled={pending !== null}
+            title={opt.hint}
+            onClick={() => handleClick(opt.grade)}
+            className={`${RATING_BUTTON_BASE} ${
+              isClicked
+                ? `${opt.activeClassName} scale-95`
+                : `${opt.className} ${pending !== null ? "opacity-40" : ""}`
+            }`}
+          >
+            {isClicked ? "記録中…" : opt.label}
+          </button>
+        );
+      })}
     </div>
   );
 }

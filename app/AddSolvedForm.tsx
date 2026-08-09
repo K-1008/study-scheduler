@@ -1,5 +1,5 @@
-import { RATING_OPTIONS } from "@/lib/ratings";
 import { todayKey } from "@/lib/date";
+import { AddRatingButtons } from "@/app/AddRatingButtons";
 import { addSolvedItem, createItem } from "@/app/items/actions";
 
 /**
@@ -70,20 +70,7 @@ export function AddSolvedForm({ tags }: { tags: string[] }) {
       <p className="mb-2 text-xs text-zinc-500 dark:text-zinc-400">
         出来はどうでしたか?(選ぶと登録されます)
       </p>
-      <div className="grid grid-cols-4 gap-2">
-        {RATING_OPTIONS.map((opt) => (
-          <button
-            key={opt.grade}
-            type="submit"
-            name="rating"
-            value={opt.grade}
-            title={opt.hint}
-            className={`rounded-md px-2 py-3 text-sm font-medium text-white ${opt.className}`}
-          >
-            {opt.label}
-          </button>
-        ))}
-      </div>
+      <AddRatingButtons />
 
       <details className="mt-3">
         <summary className="cursor-pointer text-xs text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200">
