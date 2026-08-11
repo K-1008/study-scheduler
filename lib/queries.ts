@@ -33,22 +33,40 @@ export async function getTags(): Promise<string[]> {
   return [...tags].sort((a, b) => a.localeCompare(b, "ja"));
 }
 
+export interface DueBuckets {
+  /** 期日を過ぎたもの。遅れが大きい順 */
+  overdue: ItemWithReviewState[];
+  /** 今日が期日のもの */
+  today: ItemWithReviewState[];
+}
+
 /**
- * 今日やるべき項目を、期日が近い順に取得する。
- * tag を渡すとその科目だけに絞り込む。
+ * やるべき項目を「期限切れ」と「今日」に仕分ける。
  *
- * 判定は時刻ではなく日本時間のカレンダー日で行う(isDueBy を参照)。
+ * 放置した項目ほど記憶が薄れており優先度が高いので、混ぜずに分ける。
+ * 判定は時刻ではなく日本時間のカレンダー日(午前4時区切り)で行う。
+ * tag を渡すとその科目だけに絞り込む。
  */
-export async function getDueItems(tag?: string): Promise<ItemWithReviewState[]> {
+export async function getDueBuckets(tag?: string): Promise<DueBuckets> {
   const items = await getActiveItems();
   const today = todayKey();
-  return items
+
+  const target = items
     .filter((item) => item.review_states && isDueBy(item.review_states.due, today))
     .filter((item) => !tag || item.tag === tag)
     .sort(
       (a, b) =>
         new Date(a.review_states!.due).getTime() - new Date(b.review_states!.due).getTime(),
     );
+
+  const overdue: ItemWithReviewState[] = [];
+  const dueToday: ItemWithReviewState[] = [];
+  for (const item of target) {
+    if (toDayKey(new Date(item.review_states!.due)) < today) overdue.push(item);
+    else dueToday.push(item);
+  }
+
+  return { overdue, today: dueToday };
 }
 
 export async function getItemDetail(itemId: string) {

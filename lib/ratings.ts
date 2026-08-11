@@ -80,3 +80,12 @@ export function describeInterval(due: Date, from: Date = new Date()): string {
   if (days === 1) return "明日";
   return `${days}日後`;
 }
+
+/**
+ * 期限をどれだけ過ぎたかを「3日遅れ」の形で返す。
+ * 期限切れでない場合は null。
+ */
+export function describeOverdue(due: Date, from: Date = new Date()): string | null {
+  const days = dayKeyDiff(toDayKey(due), toDayKey(from));
+  return days > 0 ? `${days}日遅れ` : null;
+}

@@ -1,10 +1,13 @@
-import Link from "next/link";
-import { getActiveItems, getDueItems, getTags } from "@/lib/queries";
-import { ReviewButtons } from "@/app/reviews/ReviewButtons";
+import { getActiveItems, getDueBuckets, getTags } from "@/lib/queries";
 import { TagFilter } from "@/app/TagFilter";
 import { AddSolvedForm } from "@/app/AddSolvedForm";
 import { ItemRow } from "@/app/ItemRow";
+import { ReviewCard } from "@/app/ReviewCard";
 import { reviewCountOf } from "@/lib/types";
+import { describeOverdue } from "@/lib/ratings";
+
+/** 期限切れが溜まっても圧迫感が出ないよう、最初はこの件数だけ見せる */
+const OVERDUE_PREVIEW = 5;
 
 function Notice({ text, tone }: { text: string; tone: "ok" | "error" }) {
   const cls =
@@ -20,11 +23,14 @@ export default async function HomePage({
   searchParams: Promise<{ tag?: string; added?: string; error?: string }>;
 }) {
   const { tag, added, error } = await searchParams;
-  const [dueItems, allItems, tags] = await Promise.all([
-    getDueItems(tag),
+  const [due, allItems, tags] = await Promise.all([
+    getDueBuckets(tag),
     getActiveItems(),
     getTags(),
   ]);
+
+  const overduePreview = due.overdue.slice(0, OVERDUE_PREVIEW);
+  const overdueRest = due.overdue.slice(OVERDUE_PREVIEW);
 
   const scheduled = allItems
     .filter((i) => !tag || i.tag === tag)
@@ -43,43 +49,66 @@ export default async function HomePage({
 
       <TagFilter tags={tags} active={tag} basePath="/" />
 
+      {/* ---------- 期限切れ ---------- */}
+      {due.overdue.length > 0 && (
+        <section className="mb-8">
+          <h2 className="mb-3 flex items-baseline gap-2 text-sm font-semibold text-amber-800 dark:text-amber-300">
+            期限切れ
+            <span className="text-xs font-normal text-amber-700/80 dark:text-amber-400/80">
+              {due.overdue.length} 件
+            </span>
+          </h2>
+
+          <ul className="space-y-3">
+            {overduePreview.map((item) => (
+              <ReviewCard
+                key={item.id}
+                item={item}
+                overdueLabel={describeOverdue(new Date(item.review_states!.due))}
+              />
+            ))}
+          </ul>
+
+          {overdueRest.length > 0 && (
+            <details className="mt-3">
+              <summary className="cursor-pointer text-xs text-amber-800 hover:underline dark:text-amber-300">
+                さらに {overdueRest.length} 件を表示
+              </summary>
+              <ul className="mt-3 space-y-3">
+                {overdueRest.map((item) => (
+                  <ReviewCard
+                    key={item.id}
+                    item={item}
+                    overdueLabel={describeOverdue(new Date(item.review_states!.due))}
+                  />
+                ))}
+              </ul>
+            </details>
+          )}
+        </section>
+      )}
+
       {/* ---------- 今日の復習 ---------- */}
       <section className="mb-8">
         <h2 className="mb-3 flex items-baseline gap-2 text-sm font-semibold text-zinc-800 dark:text-zinc-200">
           今日の復習
           <span className="text-xs font-normal text-zinc-500 dark:text-zinc-400">
-            {dueItems.length} 件
+            {due.today.length} 件
           </span>
         </h2>
 
-        {dueItems.length === 0 ? (
+        {due.today.length === 0 ? (
           <p className="rounded-lg border border-dashed border-zinc-300 p-6 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
             {tag
-              ? `「${tag}」で今日やるべき復習はありません。`
-              : "今日やるべき復習はありません。おつかれさまです。"}
+              ? `「${tag}」で今日が期日の項目はありません。`
+              : due.overdue.length > 0
+                ? "今日が期日の項目はありません。上の期限切れから片付けましょう。"
+                : "今日やるべき復習はありません。おつかれさまです。"}
           </p>
         ) : (
           <ul className="space-y-3">
-            {dueItems.map((item) => (
-              <li
-                key={item.id}
-                className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950"
-              >
-                <div className="mb-3 flex items-baseline justify-between gap-2">
-                  <Link
-                    href={`/items/${item.id}`}
-                    className="font-medium text-zinc-900 hover:underline dark:text-zinc-50"
-                  >
-                    {item.title}
-                  </Link>
-                  {item.tag && (
-                    <span className="shrink-0 rounded-full bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
-                      {item.tag}
-                    </span>
-                  )}
-                </div>
-                <ReviewButtons itemId={item.id} />
-              </li>
+            {due.today.map((item) => (
+              <ReviewCard key={item.id} item={item} />
             ))}
           </ul>
         )}
