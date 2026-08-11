@@ -149,3 +149,50 @@ export async function deleteItem(itemId: string) {
 
   revalidatePath("/");
 }
+
+// ============================================================
+// 一時停止
+//
+// 試験や資格が終わって不要になった項目を復習から外す。削除と違い
+// FSRSの状態も履歴も残るので、再受験や再履修のときに元の間隔から
+// 再開できる。DBの列名は初期スキーマの名残で is_archived。
+// ============================================================
+
+async function setSuspended(match: { itemId?: string; tag?: string }, suspended: boolean) {
+  const supabase = await createClient();
+  const query = supabase.from("items").update({ is_archived: suspended });
+
+  const { error } = match.itemId
+    ? await query.eq("id", match.itemId)
+    : await query.eq("tag", match.tag!);
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/");
+  if (match.itemId) revalidatePath(`/items/${match.itemId}`);
+}
+
+export async function suspendItem(itemId: string) {
+  await setSuspended({ itemId }, true);
+}
+
+export async function resumeItem(itemId: string) {
+  await setSuspended({ itemId }, false);
+}
+
+/**
+ * 科目まるごと停止・再開する。
+ *
+ * 試験は科目単位で終わるので、1件ずつ止めるのは現実的でない。
+ * 実行後は絞り込みを外して / に戻す。全件停止するとそのタグが
+ * getTags() から消え、絞り込み中の画面が空になって操作不能に
+ * 見えるため。
+ */
+export async function suspendTag(tag: string) {
+  await setSuspended({ tag }, true);
+  redirect(`/?added=${encodeURIComponent(`「${tag}」を停止しました。停止中の一覧から再開できます。`)}`);
+}
+
+export async function resumeTag(tag: string) {
+  await setSuspended({ tag }, false);
+  redirect(`/?added=${encodeURIComponent(`「${tag}」を再開しました。`)}`);
+}

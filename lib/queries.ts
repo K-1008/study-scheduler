@@ -7,16 +7,34 @@ const ITEM_SELECT =
   "id, title, tag, is_archived, created_at, review_states(due, state, stability, difficulty, reps, lapses), review_logs(count)";
 
 /**
- * 全ての項目を、FSRSの現在状態と復習履歴の件数付きで取得する。
+ * 停止していない項目を、FSRSの現在状態と復習履歴の件数付きで取得する。
  *
- * is_archived では絞らない。アーカイブ機能は廃止したため、フィルタを
- * 残すと過去にアーカイブした項目が一覧に出ず削除もできなくなる。
+ * is_archived 列を「一時停止」フラグとして使っている(列名は初期
+ * スキーマの名残。整理するなら is_suspended へリネームしてよい)。
+ *
+ * getTags / getDueBuckets / getCalendarSchedule / getStats はすべて
+ * この関数を経由するので、ここで除外すれば復習・カレンダー・統計・
+ * タグ一覧のすべてから停止項目が一括で外れる。
  */
 export async function getActiveItems(): Promise<ItemWithReviewState[]> {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("items")
     .select(ITEM_SELECT)
+    .eq("is_archived", false)
+    .order("created_at", { ascending: false });
+
+  if (error) throw new Error(error.message);
+  return (data ?? []) as unknown as ItemWithReviewState[];
+}
+
+/** 停止中の項目。再開・削除のための一覧に使う */
+export async function getSuspendedItems(): Promise<ItemWithReviewState[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("items")
+    .select(ITEM_SELECT)
+    .eq("is_archived", true)
     .order("created_at", { ascending: false });
 
   if (error) throw new Error(error.message);

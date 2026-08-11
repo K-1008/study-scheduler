@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { deleteItem, updateItem } from "@/app/items/actions";
+import { deleteItem, updateItem, suspendItem, resumeItem } from "@/app/items/actions";
 import { describeInterval } from "@/lib/ratings";
 import { toDayKey } from "@/lib/date";
 
@@ -15,20 +15,36 @@ export interface ItemRowData {
   reviewCount: number;
 }
 
-export function ItemRow({ item, tags }: { item: ItemRowData; tags: string[] }) {
+export function ItemRow({
+  item,
+  tags,
+  suspended = false,
+}: {
+  item: ItemRowData;
+  tags: string[];
+  /** 停止中の一覧で使う場合。「停止」の代わりに「再開」を出す */
+  suspended?: boolean;
+}) {
   const [editing, setEditing] = useState(false);
   const [pending, setPending] = useState(false);
   const router = useRouter();
 
-  async function handleSave(formData: FormData) {
+  /** Server Action を実行して一覧を作り直す。実行中は操作を止める */
+  async function run(action: () => Promise<unknown>) {
     setPending(true);
     try {
-      await updateItem(item.id, formData);
-      setEditing(false);
+      await action();
       router.refresh();
     } finally {
       setPending(false);
     }
+  }
+
+  async function handleSave(formData: FormData) {
+    await run(async () => {
+      await updateItem(item.id, formData);
+      setEditing(false);
+    });
   }
 
   async function handleDelete() {
@@ -37,14 +53,7 @@ export function ItemRow({ item, tags }: { item: ItemRowData; tags: string[] }) {
         ? `\n復習履歴 ${item.reviewCount}件も一緒に消え、元に戻せません。`
         : "\n元に戻せません。";
     if (!window.confirm(`${item.title} を削除しますか?${detail}`)) return;
-
-    setPending(true);
-    try {
-      await deleteItem(item.id);
-      router.refresh();
-    } finally {
-      setPending(false);
-    }
+    await run(() => deleteItem(item.id));
   }
 
   if (editing) {
@@ -131,6 +140,28 @@ export function ItemRow({ item, tags }: { item: ItemRowData; tags: string[] }) {
         >
           編集
         </button>
+        {/* 停止も再開も取り消せるので確認ダイアログは出さない */}
+        {suspended ? (
+          <button
+            type="button"
+            onClick={() => run(() => resumeItem(item.id))}
+            disabled={pending}
+            title="復習に戻します。次回復習日は停止前のまま"
+            className="font-medium text-amber-700 hover:text-amber-900 disabled:opacity-50 dark:text-amber-400 dark:hover:text-amber-200"
+          >
+            再開
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => run(() => suspendItem(item.id))}
+            disabled={pending}
+            title="復習に出なくなります。履歴は残り、いつでも再開できます"
+            className="text-zinc-500 hover:text-amber-700 disabled:opacity-50 dark:text-zinc-400 dark:hover:text-amber-400"
+          >
+            停止
+          </button>
+        )}
         <button
           type="button"
           onClick={handleDelete}

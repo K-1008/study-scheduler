@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getItemDetail } from "@/lib/queries";
-import { updateItem } from "@/app/items/actions";
+import { updateItem, resumeItem } from "@/app/items/actions";
 import { ReviewButtons } from "@/app/reviews/ReviewButtons";
 import { RATING_LABEL, describeInterval } from "@/lib/ratings";
 import { toDayKey } from "@/lib/date";
@@ -104,10 +104,28 @@ export default async function ItemDetailPage({
               {item.review_states.difficulty.toFixed(2)}
             </div>
           </div>
-          <p className="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            今すぐ復習を記録する
-          </p>
-          <ReviewButtons itemId={item.id} />
+          {item.is_archived ? (
+            <div className="rounded-md bg-amber-50 px-3 py-2 dark:bg-amber-950/40">
+              <p className="text-sm text-amber-900 dark:text-amber-200">
+                この項目は停止中です。復習には出てきません。
+              </p>
+              <form action={resumeItem.bind(null, item.id)} className="mt-2">
+                <button
+                  type="submit"
+                  className="rounded-md border border-amber-300 px-3 py-1.5 text-xs font-medium text-amber-800 hover:bg-amber-100 dark:border-amber-800 dark:text-amber-200 dark:hover:bg-amber-900/40"
+                >
+                  復習を再開する
+                </button>
+              </form>
+            </div>
+          ) : (
+            <>
+              <p className="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                今すぐ復習を記録する
+              </p>
+              <ReviewButtons itemId={item.id} />
+            </>
+          )}
         </div>
       )}
 

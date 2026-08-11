@@ -1,4 +1,5 @@
-import { getActiveItems, getDueBuckets, getTags } from "@/lib/queries";
+import { getActiveItems, getDueBuckets, getTags, getSuspendedItems } from "@/lib/queries";
+import { TagBulkButton } from "@/app/TagBulkButton";
 import { TagFilter } from "@/app/TagFilter";
 import { AddSolvedForm } from "@/app/AddSolvedForm";
 import { ItemRow } from "@/app/ItemRow";
@@ -23,14 +24,24 @@ export default async function HomePage({
   searchParams: Promise<{ tag?: string; added?: string; error?: string }>;
 }) {
   const { tag, added, error } = await searchParams;
-  const [due, allItems, tags] = await Promise.all([
+  const [due, allItems, tags, suspended] = await Promise.all([
     getDueBuckets(tag),
     getActiveItems(),
     getTags(),
+    getSuspendedItems(),
   ]);
 
   const overduePreview = due.overdue.slice(0, OVERDUE_PREVIEW);
   const overdueRest = due.overdue.slice(OVERDUE_PREVIEW);
+
+  // 停止中の項目を科目ごとに数える。まとめて再開するボタンに使う
+  const suspendedTagCounts = new Map<string, number>();
+  for (const item of suspended) {
+    if (item.tag) suspendedTagCounts.set(item.tag, (suspendedTagCounts.get(item.tag) ?? 0) + 1);
+  }
+  const suspendedTags = [...suspendedTagCounts.entries()]
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count);
 
   const scheduled = allItems
     .filter((i) => !tag || i.tag === tag)
@@ -123,9 +134,19 @@ export default async function HomePage({
           </span>
         </summary>
 
+        {/* 科目で絞り込んでいるときだけ、まとめて停止できるようにする */}
+        {tag && scheduled.length > 0 && (
+          <div className="border-t border-zinc-100 px-4 py-3 dark:border-zinc-900">
+            <TagBulkButton tag={tag} count={scheduled.length} action="suspend" />
+            <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+              試験が終わった科目をまとめて復習から外します。履歴は残ります。
+            </p>
+          </div>
+        )}
+
         {scheduled.length === 0 ? (
           <p className="px-4 py-6 text-center text-sm text-zinc-500 dark:text-zinc-400">
-            まだ項目がありません。
+            {tag ? `「${tag}」の項目はありません。` : "まだ項目がありません。"}
           </p>
         ) : (
           <ul className="divide-y divide-zinc-100 border-t border-zinc-100 dark:divide-zinc-900 dark:border-zinc-900">
@@ -145,6 +166,43 @@ export default async function HomePage({
           </ul>
         )}
       </details>
+
+      {/* ---------- 停止中 ---------- */}
+      {suspended.length > 0 && (
+        <details className="mt-4 rounded-lg border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
+          <summary className="cursor-pointer px-4 py-3 text-sm font-semibold text-zinc-600 hover:bg-zinc-50 dark:text-zinc-400 dark:hover:bg-zinc-900">
+            停止中
+            <span className="ml-2 text-xs font-normal text-zinc-500 dark:text-zinc-400">
+              {suspended.length} 件
+            </span>
+          </summary>
+
+          {suspendedTags.length > 0 && (
+            <div className="flex flex-wrap gap-2 border-t border-zinc-100 px-4 py-3 dark:border-zinc-900">
+              {suspendedTags.map(({ name, count }) => (
+                <TagBulkButton key={name} tag={name} count={count} action="resume" />
+              ))}
+            </div>
+          )}
+
+          <ul className="divide-y divide-zinc-100 border-t border-zinc-100 dark:divide-zinc-900 dark:border-zinc-900">
+            {suspended.map((item) => (
+              <ItemRow
+                key={item.id}
+                tags={tags}
+                suspended
+                item={{
+                  id: item.id,
+                  title: item.title,
+                  tag: item.tag,
+                  due: item.review_states?.due ?? new Date().toISOString(),
+                  reviewCount: reviewCountOf(item),
+                }}
+              />
+            ))}
+          </ul>
+        </details>
+      )}
     </main>
   );
 }
