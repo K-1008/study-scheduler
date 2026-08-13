@@ -6,6 +6,9 @@ import { createClient } from "@/lib/supabase/server";
 import { optimizeParameters, MIN_TRAINABLE_ITEMS, type RawLog } from "@/lib/optimizer";
 
 function tableHint(message: string) {
+  if (message.includes("tag_retention")) {
+    return "tag_retention 列がまだありません。supabase/migrations/0003_tag_retention.sql を Supabase の SQL Editor で実行してください(1行だけです)。";
+  }
   return message.includes("user_settings")
     ? "user_settings テーブルがまだ作られていません。supabase/migrations/0002_user_settings.sql を Supabase の SQL Editor で実行してください。"
     : message;
@@ -33,6 +36,50 @@ export async function saveRetention(formData: FormData) {
   revalidatePath("/");
   redirect(
     `/settings?saved=${encodeURIComponent(`目標保持率を ${value} に変更しました。次回以降の復習から適用されます。`)}`,
+  );
+}
+
+/**
+ * 科目ごとの目標保持率をまとめて保存する。
+ *
+ * フォームは科目ごとに `tag:<科目名>` という名前で値を送る。
+ * 空文字は「全体設定に従う」で、その科目のキーを削除する。
+ */
+export async function saveTagRetention(formData: FormData) {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("認証されていません");
+
+  const tagRetention: Record<string, number> = {};
+  for (const [key, raw] of formData.entries()) {
+    if (!key.startsWith("tag:")) continue;
+    const tag = key.slice(4);
+    const value = Number(raw);
+    if (!raw || !Number.isFinite(value)) continue; // 空 = 全体設定に従う
+    if (value <= 0.7 || value > 0.99) {
+      redirect(`/settings?error=${encodeURIComponent(`「${tag}」の保持率が範囲外です`)}`);
+    }
+    tagRetention[tag] = value;
+  }
+
+  const { error } = await supabase.from("user_settings").upsert(
+    { user_id: user.id, tag_retention: tagRetention, updated_at: new Date().toISOString() },
+    { onConflict: "user_id" },
+  );
+  if (error) redirect(`/settings?error=${encodeURIComponent(tableHint(error.message))}`);
+
+  revalidatePath("/settings");
+  revalidatePath("/");
+
+  const count = Object.keys(tagRetention).length;
+  redirect(
+    `/settings?saved=${encodeURIComponent(
+      count === 0
+        ? "科目ごとの設定をすべて解除しました。全体設定に従います。"
+        : `${count}科目に個別の保持率を設定しました。次回以降の復習から適用されます。`,
+    )}`,
   );
 }
 

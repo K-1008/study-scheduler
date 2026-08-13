@@ -1,14 +1,33 @@
 import { getUserSettingsRow } from "@/lib/settings";
-import { getTrainableItemCount } from "@/lib/queries";
+import { getTrainableItemCount, getTags } from "@/lib/queries";
 import { buildScheduler, DEFAULT_SETTINGS } from "@/lib/fsrs";
 import { MIN_TRAINABLE_ITEMS } from "@/lib/optimizer";
 import { createEmptyCard, Rating } from "ts-fsrs";
-import { saveRetention, runOptimization, resetParameters, testOptimizer } from "./actions";
+import {
+  saveRetention,
+  saveTagRetention,
+  runOptimization,
+  resetParameters,
+  testOptimizer,
+} from "./actions";
 
 const CHOICES = [
   { value: 0.85, label: "0.85", note: "復習を減らしたい" },
   { value: 0.9, label: "0.90", note: "標準" },
   { value: 0.95, label: "0.95", note: "取りこぼしを減らしたい" },
+];
+
+/**
+ * 科目別に選べる値。全体設定より高い値を用意している。
+ *
+ * 数週間先の試験に向けて詰めたい場合、0.95では効果が小さい。試験まで
+ * 23日として復習回数を計算すると 0.90 も 0.95 もどちらも3回で、
+ * 差が出るのは 0.97(4回)以上から。0.99 は7回になるが復習量も跳ね上がる。
+ */
+const TAG_CHOICES = [
+  ...CHOICES,
+  { value: 0.97, label: "0.97", note: "試験が近い" },
+  { value: 0.99, label: "0.99", note: "直前に詰め込む" },
 ];
 
 /** その保持率で、新規項目に「できた」を押し続けた場合の間隔 */
@@ -41,9 +60,14 @@ export default async function SettingsPage({
   searchParams: Promise<{ saved?: string; error?: string }>;
 }) {
   const { saved, error } = await searchParams;
-  const [row, trainable] = await Promise.all([getUserSettingsRow(), getTrainableItemCount()]);
+  const [row, trainable, tags] = await Promise.all([
+    getUserSettingsRow(),
+    getTrainableItemCount(),
+    getTags(),
+  ]);
 
   const current = row?.request_retention ?? DEFAULT_SETTINGS.requestRetention;
+  const tagRetention = row?.tag_retention ?? {};
   const ready = trainable >= MIN_TRAINABLE_ITEMS;
   const progress = Math.min(100, Math.round((trainable / MIN_TRAINABLE_ITEMS) * 100));
   const optimized = Boolean(row?.fsrs_params);
@@ -113,6 +137,56 @@ export default async function SettingsPage({
           変更は次回以降の復習から適用されます。既に決まっている次回復習日は変わりません。
         </p>
       </section>
+
+      {/* ---------- 科目ごとの保持率 ---------- */}
+      {tags.length > 0 && (
+        <section className="mb-8 rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
+          <h2 className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">
+            科目ごとの目標保持率
+          </h2>
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+            試験が近い科目だけ高くすると、その科目の復習間隔が短くなり優先的に出題されます。
+            設定しない科目は上の全体設定に従います。
+          </p>
+          <p className="mt-2 rounded-md bg-zinc-50 px-3 py-2 text-xs text-zinc-600 dark:bg-zinc-900 dark:text-zinc-300">
+            <span className="font-medium">数週間先の試験に向けて詰めるなら 0.97 以上。</span>
+            試験まで23日として復習が回る回数を計算すると、0.90 と 0.95 はどちらも3回で差が出ません。
+            0.97 で4回、0.99 で7回になります。試験が終わったら戻すか、科目ごと停止してください。
+          </p>
+
+          <form action={saveTagRetention} className="mt-4">
+            <ul className="divide-y divide-zinc-100 dark:divide-zinc-900">
+              {tags.map((t) => (
+                <li key={t} className="flex items-center justify-between gap-3 py-2">
+                  <span className="min-w-0 flex-1 truncate text-sm text-zinc-800 dark:text-zinc-200">
+                    {t}
+                  </span>
+                  <select
+                    name={`tag:${t}`}
+                    defaultValue={String(tagRetention[t] ?? "")}
+                    aria-label={`${t} の目標保持率`}
+                    className="shrink-0 rounded-md border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+                  >
+                    <option value="">全体設定に従う({current})</option>
+                    {TAG_CHOICES.map((c) => (
+                      <option key={c.value} value={c.value}>
+                        {c.label}({c.note})
+                      </option>
+                    ))}
+                  </select>
+                </li>
+              ))}
+            </ul>
+
+            <button
+              type="submit"
+              className="mt-3 rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-300"
+            >
+              保存
+            </button>
+          </form>
+        </section>
+      )}
 
       {/* ---------- 個人最適化 ---------- */}
       <section className="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">

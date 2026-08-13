@@ -40,8 +40,9 @@ export async function addSolvedItem(formData: FormData) {
   const solvedOn = formData.get("solved_on");
   const now = isDayKey(solvedOn) ? recordedAtFor(solvedOn) : new Date();
 
-  // 空のカードにその場で評価を適用し、初回の復習結果として保存する
-  const settings = await getUserSettings();
+  // 空のカードにその場で評価を適用し、初回の復習結果として保存する。
+  // 科目に個別の目標保持率があればそれを使う
+  const settings = await getUserSettings(tag || null);
   const { nextRow } = scheduleNext(initialReviewState(now), grade, now, settings);
 
   const { error: stateError } = await supabase
