@@ -123,12 +123,28 @@ export async function updateItem(itemId: string, formData: FormData) {
     .eq("id", itemId);
   if (error) throw new Error(error.message);
 
+  // 日付が実際に変わったときだけ書き換える。
+  //
+  // フォームの日付欄は常に送信されるので、以前は無条件に更新していた。
+  // しかし表示用の値は toDayKey(時刻を落とし、午前4時ぶん巻き戻す)で
+  // 作っているため、それを dayKeyToDate でその日の0時に戻すと元の時刻が
+  // 失われる。タイトルだけ直したつもりが due が4〜26時間early に動き、
+  // 深夜が期日の項目では丸1日ずれていた。
   if (isDayKey(due)) {
-    const { error: dueError } = await supabase
+    const { data: current } = await supabase
       .from("review_states")
-      .update({ due: dayKeyToDate(due).toISOString(), updated_at: new Date().toISOString() })
-      .eq("item_id", itemId);
-    if (dueError) throw new Error(dueError.message);
+      .select("due")
+      .eq("item_id", itemId)
+      .maybeSingle();
+
+    const unchanged = current?.due && toDayKey(new Date(current.due)) === due;
+    if (!unchanged) {
+      const { error: dueError } = await supabase
+        .from("review_states")
+        .update({ due: dayKeyToDate(due).toISOString(), updated_at: new Date().toISOString() })
+        .eq("item_id", itemId);
+      if (dueError) throw new Error(dueError.message);
+    }
   }
 
   revalidatePath("/");

@@ -59,23 +59,29 @@ export function formatDayKeyShort(key: string): string {
 }
 
 /**
- * "YYYY-MM-DD" を日本時間0時の Date にする。
+ * "YYYY-MM-DD" を、その日に属する Date に変換する(toDayKey の逆変換)。
+ *
+ * 0時ではなく**正午**を返す。DAY_START_HOUR ぶん巻き戻す仕様のため、
+ * 0時はひとつ前の日付キーに属してしまう。
+ *
+ *   dayKeyToDate("2026-08-25") が 0時なら
+ *     → toDayKey は 8/24 と判定し、指定より1日早く出題される
+ *   正午なら
+ *     → toDayKey("2026-08-25") に戻り、往復して一致する
+ *
  * 日本に夏時間は無いので +09:00 固定で問題ない。
  */
 export function dayKeyToDate(key: string): Date {
-  return new Date(`${key}T00:00:00+09:00`);
+  return new Date(`${key}T12:00:00+09:00`);
 }
 
 /**
  * 過去の日付に記録するときの時刻を決める。
- *
- * 今日なら現在時刻をそのまま使う。過去の日付ならその日の正午とする。
- * 深夜や早朝を選ぶと DAY_START_HOUR の巻き戻しで意図しない日に
- * 寄ってしまうため、境界から十分離れた時刻を選んでいる。
+ * 今日なら現在時刻をそのまま使い、過去の日付ならその日の正午とする。
  */
 export function recordedAtFor(dayKey: string, now: Date = new Date()): Date {
   if (dayKey === toDayKey(now)) return now;
-  return new Date(`${dayKey}T12:00:00+09:00`);
+  return dayKeyToDate(dayKey);
 }
 
 /** "YYYY-MM-DD" 形式かどうか */
