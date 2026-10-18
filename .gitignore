@@ -44,3 +44,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# ローカル専用の引き継ぎメモ(個人的な運用情報を含むため公開しない)
+HANDOFF.local.md
