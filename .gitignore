@@ -47,3 +47,7 @@ next-env.d.ts
 
 # ローカル専用の引き継ぎメモ(個人的な運用情報を含むため公開しない)
 HANDOFF.local.md
+
+# エクスポートした会話ログ(個人的なやり取りを含むため公開しない)
+conversation-*.txt
+conversation-*.md
