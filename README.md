@@ -27,7 +27,7 @@ FSRSは記憶を「安定度」「難易度」「想起率」の3つでモデル
 
 | 領域 | 採用 | 要点 |
 |---|---|---|
-| フロント/サーバー | Next.js 16 (App Router) | Server Components と Server Actions で完結。クライアントコンポーネントは3つだけ |
+| フロント/サーバー | Next.js 16 (App Router) | Server Components と Server Actions で完結。クライアントコンポーネントは5つだけ |
 | DB・認証 | Supabase (PostgreSQL) | **Row Level Security** で認可をDB層に寄せ、アプリのバグでは破れない構造にした |
 | アルゴリズム | ts-fsrs | スケジューリング |
 | パラメータ最適化 | @open-spaced-repetition/binding | Rust製。既定値を初期値にL2正則化で微調整 |

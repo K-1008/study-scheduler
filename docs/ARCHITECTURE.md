@@ -109,7 +109,15 @@ export default async function HomePage() {
 
 - **APIエンドポイントを書かなくてよい**。`/api/items` のようなルートと、それを呼ぶ `fetch` の両方が不要になる
 - **クライアントの状態管理が要らない**。当初 TanStack Query を入れたが、サーバー側で完結したため一度も使わず削除した
-- **JavaScriptを送る量が減る**。クライアントコンポーネントは `ItemRow.tsx` と `ReviewButtons.tsx` の2つだけ
+- **JavaScriptを送る量が減る**。クライアントコンポーネントは次の5つだけで、いずれもブラウザでしかできないこと(押した瞬間の反応、確認ダイアログ、日付の変化の検知)に限っている
+
+| ファイル | ブラウザ側が必要な理由 |
+|---|---|
+| `AddRatingButtons.tsx` | 追加フォームの評価ボタン。送信中の表示と二度押し防止 |
+| `reviews/ReviewButtons.tsx` | 復習の評価ボタン。送信中の表示と「次回は3日後」の表示 |
+| `ItemRow.tsx` | 一覧の1行。その場で入力欄に切り替える編集と、削除の確認 |
+| `TagBulkButton.tsx` | 科目まとめて停止・再開。件数を示した確認 |
+| `DayChangeRefresher.tsx` | 開いたまま日付が変わったら画面を再取得する |
 
 更新処理は **Server Actions** で書いた。フォームの `action` に関数を直接渡せる。
 
